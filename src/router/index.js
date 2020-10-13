@@ -1,29 +1,52 @@
-import Vue from 'vue'
-import VueRouter from 'vue-router'
-import Home from '../views/Home.vue'
+import Vue from 'vue';
+import store from '../store';
+import AuthRoutes from './Auth';
+import VueRouter from 'vue-router';
+import PublicRoutes from './Public';
+import DashboardRoutes from './Dashboard';
 
-Vue.use(VueRouter)
+Vue.use(VueRouter);
 
 const routes = [
-  {
-    path: '/',
-    name: 'Home',
-    component: Home
-  },
-  {
-    path: '/about',
-    name: 'About',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/About.vue')
-  }
-]
+  AuthRoutes,
+  DashboardRoutes,
+  ...PublicRoutes,
+];
 
 const router = new VueRouter({
   mode: 'history',
   base: process.env.BASE_URL,
   routes
-})
+});
 
-export default router
+router.beforeEach((to, from, next) => {
+  const isLoggedIn = store.getters['Auth/isAuth'];
+  if (to.matched.some(rec => rec.meta.requiresAuth)) {
+    if (!isLoggedIn) {
+      store.dispatch('Auth/logoutUser');
+      next({
+        path: '/auth/login',
+        query: {
+          redirect: to.fullPath
+        }
+      });
+    } else {
+      next();
+    }
+  } else if (to.matched.some(rec => rec.meta.requiresGuest)) {
+    if (isLoggedIn) {
+      next({
+        path: '/dashboard',
+        query: {
+          redirect: to.fullPath
+        }
+      });
+    } else {
+      next();
+    }
+  } else {
+    next();
+  }
+});
+
+export default router;
