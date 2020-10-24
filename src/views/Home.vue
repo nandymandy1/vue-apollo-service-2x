@@ -1,20 +1,19 @@
 <template>
   <div class="home">
-    <h4 class="text-primary display-4">News Feed</h4>
+    <h2 class="text-primary font-weight-bold mb-3">News Feed</h2>
     <ApolloQuery
       :query="
         (gql) =>
           gql`
-            ${GET_ALL_PAGINATED_POSTS}
+            ${feedsQuery}
           `
       "
-      :variables="{ page: currentPage, limit: 10 }"
+      :variables="{ limit: 6, page: currentPage }"
     >
-      <template v-slot="{ result: { data, loading, errors } }">
-        <p class="loading" v-if="loading">Loading ...</p>
-        <div class="error" v-else-if="errors">Error :-(</div>
-        <div class="posts" v-else-if="data">
-          <PostList :posts="data.getPostsByLimitAndPage.posts" />
+      <template v-slot="{ result: { data, error, loading } }">
+        <div v-if="loading"><p>Loading...</p></div>
+        <div v-else-if="data">
+          <Posts :posts="data.getPostsByLimitAndPage.posts" />
           <bPagination
             align="center"
             v-model="currentPage"
@@ -22,40 +21,53 @@
             :total-rows="data.getPostsByLimitAndPage.paginator.postCount"
           />
         </div>
-        <div v-else>No data found...</div>
+        <div v-else-if="error">Something happend please try again...</div>
+        <div v-else>No Result</div>
       </template>
     </ApolloQuery>
   </div>
 </template>
 
 <script>
-import PostList from "@/components/Posts/Posts";
+import Posts from "@/components/Posts/Posts";
 export default {
   components: {
-    PostList,
+    Posts,
+  },
+  watch: {
+    currentPage() {
+      document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
+    },
   },
   name: "Home",
   data: () => ({
     currentPage: 1,
-    GET_ALL_PAGINATED_POSTS: `
-      query GET_PAGINATED_POSTS($page: Int!, $limit: Int!) {
-            getPostsByLimitAndPage(limit: $limit, page: $page) {
+    feedsQuery: `
+    query GetPaginatedPosts($page: Int!, $limit: Int!) {
+            getPostsByLimitAndPage(page: $page, limit: $limit) {
               posts {
                 id
                 title
                 featuredImage
+                createdAt
+                updatedAt
                 author {
+                  id
                   username
                   firstName
                   lastName
+                  avatarImage
                 }
               }
               paginator {
-                perPage
+                currentPage
                 postCount
+                perPage
               }
             }
-        }`,
+          }
+    `,
   }),
 };
 </script>
